@@ -66,7 +66,7 @@ async def add_or_update_task(
     mistakes: int
 ):
     async with session.begin():
-        stmt = select(Tasks).where(user_id=telegram_id, created_at=date.today())
+        stmt = select(Tasks).filter_by(user_id=telegram_id, created_at=date.today())
         result = await session.execute(stmt)
 
         try:
@@ -92,17 +92,9 @@ async def add_or_update_task(
 async def get_daily_results(
     session: AsyncSession,
     telegram_id: int,
-    date: date
+    selected_date: date
 ):
-    stmt = select(
-            Tasks.scales_and_fruis,
-            Tasks.fruit_picking,
-            Tasks.linear_equasion,
-            Tasks.area_and_perimeter,
-            Tasks.total,
-            Tasks.mistakes,
-            Tasks.created_at.label('end_date')
-        ).where(user_id=telegram_id, created_at=date)
+    stmt = select(Tasks).filter_by(user_id=telegram_id, created_at=selected_date)
     result = await session.execute(stmt)
     task_record = result.scalar_one_or_none()
     return task_record
@@ -111,10 +103,10 @@ async def get_daily_results(
 async def get_interval_results(
     session: AsyncSession,
     telegram_id: int,
-    date
+    selected_date
 ):
     end_date = date.today()
-    start_date = end_date - date
+    start_date = selected_date
     stmt = (
         select(
             func.sum(Tasks.scales_and_fruis).label('scales_and_fruis'),
@@ -123,11 +115,9 @@ async def get_interval_results(
             func.sum(Tasks.area_and_perimeter).label('area_and_perimeter'),
             func.sum(Tasks.total).label('total'),
             func.sum(Tasks.mistakes).label('mistakes'),
-            literal(start_date).label('start_date'),
-            literal(end_date).label('end_date')
         )
-        .where(Tasks.user_id == telegram_id)
-        .where(Tasks.created_at.between(start_date, end_date))
+        .filter(Tasks.user_id == telegram_id)
+        .filter(Tasks.created_at.between(start_date, end_date))
     )
     result = await session.execute(stmt)
     task_records = result.fetchone()

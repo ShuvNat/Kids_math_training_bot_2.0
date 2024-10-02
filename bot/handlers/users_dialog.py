@@ -217,26 +217,36 @@ async def on_date_clicked(
     selected_date: date, /,
 ):
     dialog_manager.dialog_data['selected_date'] = selected_date
+    dialog_manager.dialog_data['function'] = get_daily_results
+    await call_database(dialog_manager)
     await dialog_manager.back()
 
 
 async def get_stats(c: CallbackQuery, button: Button, dialog_manager: DialogManager):
     if button.widget_id == 'today':
         selected_date = date.today()
+        dialog_manager.dialog_data['function'] = get_daily_results
     elif button.widget_id == 'week':
-        selected_date = relativedelta(weeks=1)
-    elif button.widget_id == 'month':
-        selected_date = relativedelta(months=1)
+        selected_date = date.today() - relativedelta(weeks=1)
+        dialog_manager.dialog_data['function'] = get_interval_results
     else:
-        dialog_manager.dialog_data['selected_date'] = selected_date
+        selected_date = date.today() - relativedelta(months=1)
+        dialog_manager.dialog_data['function'] = get_interval_results
+    dialog_manager.dialog_data['selected_date'] = selected_date
+    await call_database(dialog_manager)
     await dialog_manager.next()
 
 
 async def call_database(dialog_manager: DialogManager):
     session = dialog_manager.middleware_data.get('session')
     user_id = dialog_manager.event.from_user.id
-    task_record = await func(session, user_id)
+    function = dialog_manager.dialog_data['function']
+    selected_date = dialog_manager.dialog_data['selected_date']
+    task_record = await function(session, user_id, selected_date)
     dialog_manager.dialog_data.clear()
+    dialog_manager.dialog_data['start_date'] = str_date(selected_date)
+    dialog_manager.dialog_data['end_date'] = str_date(date.today())
+    dialog_manager.dialog_data['func_name'] = function.__name__
     if task_record:
         dialog_manager.dialog_data['total'] = task_record.total
         dialog_manager.dialog_data['scales_and_fruis'] = task_record.scales_and_fruis
@@ -244,44 +254,21 @@ async def call_database(dialog_manager: DialogManager):
         dialog_manager.dialog_data['linear_equasion'] = task_record.linear_equasion
         dialog_manager.dialog_data['area_and_perimeter'] = task_record.area_and_perimeter
         dialog_manager.dialog_data['mistakes'] = task_record.mistakes
-        dialog_manager.dialog_data['end_date'] = str_date(task_record.end_date)
-        try:
-            dialog_manager.dialog_data['start_date'] = str_date(task_record.start_date)
-        except AttributeError:
-            pass
-    print(dialog_manager.dialog_data)
 
 
 async def get_text_stats(dialog_manager: DialogManager, **kwargs):
     if not dialog_manager.dialog_data.get('total'):
-        return {'number': 1}
-    elif not dialog_manager.dialog_data.get('end_date'):
-        return {'number': 2,
-                'date': 1}
+        return {'text': 1}
     else:
-        return {'number': 2,
-                'date': 2}
+        return {'text': 2}
 
 
-async def on_date_clicked(
-    callback: ChatEvent,
-    widget: ManagedCalendar,
-    dialog_manager: DialogManager,
-    selected_date: date, /,
-):
-    session = dialog_manager.middleware_data.get('session')
-    user_id = callback.from_user.id
-    task_record = await get_daily_results(session, user_id, selected_date)
-    dialog_manager.dialog_data.clear()
-    if task_record:
-        dialog_manager.dialog_data['total'] = task_record.total
-        dialog_manager.dialog_data['scales_and_fruis'] = task_record.scales_and_fruis
-        dialog_manager.dialog_data['fruit_picking'] = task_record.fruit_picking
-        dialog_manager.dialog_data['linear_equasion'] = task_record.linear_equasion
-        dialog_manager.dialog_data['area_and_perimeter'] = task_record.area_and_perimeter
-        dialog_manager.dialog_data['mistakes'] = task_record.mistakes
-        dialog_manager.dialog_data['start_date'] = str_date(task_record.created_at)
-    await dialog_manager.back()
+async def get_date_stats(dialog_manager: DialogManager, **kwargs):
+    if dialog_manager.dialog_data['func_name'] == 'get_daily_results':
+        return {'date': 1}
+    else:
+        return {'date': 2}
+
 
 stats_dialog = Dialog(
     Window(
@@ -321,20 +308,20 @@ stats_dialog = Dialog(
                           'Площадь и периметр: {dialog_data[area_and_perimeter]}\n\n'
                           'Сделано ошибок: {dialog_data[mistakes]}\n')
             },
-            selector='number',
+            selector='text',
         ),
         Column(
             Back(Const('Другая статистика'), id='stats'),
             Start(Const('На старт'), id='start', state=StartUD.start, mode=StartMode.RESET_STACK),
             Start(Const('Задачи'), id='tasks', state=TaskUD.task),
             ),
-        getter=get_text_stats,
+        getter=(get_text_stats, get_date_stats),
         state=StatsUD.stats,
     ),
     Window(
         Const('Выберите день, за который хотите увидеть статистику'),
         Calendar(
-            id="get_any_day_results",
+            id="pick_any_day",
             on_click=on_date_clicked,
         ),
         state=StatsUD.calendar,
