@@ -3,26 +3,30 @@ from aiogram.fsm.storage.redis import DefaultKeyBuilder, RedisStorage, Redis
 
 redis = Redis(host='localhost', port=6379, db=1)
 
-storage = RedisStorage(redis=redis, key_builder=DefaultKeyBuilder(with_destiny=True))
+storage = RedisStorage(
+    redis=redis,
+    key_builder=DefaultKeyBuilder(with_destiny=True)
+    )
 
 
-class StartUD(StatesGroup):
+class StartState(StatesGroup):
     start = State()
 
 
-class QuestionnaireUD(StatesGroup):
+class QuestionnaireState(StatesGroup):
     real_first_name = State()
     real_last_name = State()
     class_number = State()
     save = State()
 
 
-class TaskUD(StatesGroup):
+class TaskState(StatesGroup):
     task = State()
     answer = State()
 
 
-class StatsUD(StatesGroup):
-    choice = State()
+class StatsState(StatesGroup):
+    student = State()
+    period = State()
     calendar = State()
     stats = State()

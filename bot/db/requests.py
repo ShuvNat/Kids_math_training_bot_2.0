@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import func, literal, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as upsert
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,9 +54,25 @@ async def get_real_name(
     telegram_id: int,
 ):
     async with session.begin():
-        stmt = select(User.real_first_name).where(User.telegram_id == telegram_id)
+        stmt = select(User.real_first_name).where(
+            User.telegram_id == telegram_id)
         result = await session.execute(stmt)
-    return result.scalar()
+        real_name = result.scalar()
+    return real_name
+
+
+async def get_full_real_name(
+    session: AsyncSession,
+):
+    async with session.begin():
+        stmt = select(User.real_first_name,
+                      User.real_last_name,
+                      User.telegram_id).order_by(
+                          User.real_last_name
+                      )
+        result = await session.execute(stmt)
+        real_names = result.fetchall()
+    return real_names
 
 
 async def add_or_update_task(
@@ -66,7 +82,8 @@ async def add_or_update_task(
     mistakes: int
 ):
     async with session.begin():
-        stmt = select(Tasks).filter_by(user_id=telegram_id, created_at=date.today())
+        stmt = select(Tasks).filter_by(user_id=telegram_id,
+                                       created_at=date.today())
         result = await session.execute(stmt)
 
         try:
@@ -94,7 +111,8 @@ async def get_daily_results(
     telegram_id: int,
     selected_date: date
 ):
-    stmt = select(Tasks).filter_by(user_id=telegram_id, created_at=selected_date)
+    stmt = select(Tasks).filter_by(user_id=telegram_id,
+                                   created_at=selected_date)
     result = await session.execute(stmt)
     task_record = result.scalar_one_or_none()
     return task_record
