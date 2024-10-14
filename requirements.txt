@@ -31,4 +31,3 @@ six==1.16.0
 SQLAlchemy==2.0.34
 typing_extensions==4.12.2
 tzdata==2024.1
-yarl==1.13.1
