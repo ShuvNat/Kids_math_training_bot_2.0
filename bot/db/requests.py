@@ -67,6 +67,8 @@ async def get_full_real_name(
     async with session.begin():
         stmt = select(User.real_first_name,
                       User.real_last_name,
+                      User.first_name,
+                      User.last_name,
                       User.telegram_id).order_by(
                           User.real_last_name
                       )
@@ -121,7 +123,7 @@ async def get_daily_results(
 async def get_interval_results(
     session: AsyncSession,
     telegram_id: int,
-    selected_date
+    selected_date: date
 ):
     end_date = date.today()
     start_date = selected_date
@@ -139,4 +141,50 @@ async def get_interval_results(
     )
     result = await session.execute(stmt)
     task_records = result.fetchone()
+    return task_records
+
+
+async def xlsx_interval_results(
+    session: AsyncSession,
+    telegram_id: int,
+    selected_date: date
+):
+    end_date = date.today()
+    start_date = selected_date
+    stmt = (
+        select(
+            Tasks.created_at,
+            Tasks.scales_and_fruis,
+            Tasks.fruit_picking,
+            Tasks.linear_equasion,
+            Tasks.area_and_perimeter,
+            Tasks.total,
+            Tasks.mistakes,
+        )
+        .filter(Tasks.user_id == telegram_id)
+        .filter(Tasks.created_at.between(start_date, end_date))
+    )
+    result = await session.execute(stmt)
+    task_records = result.fetchall()
+    return task_records
+
+
+async def xlsx_all_results(
+    session: AsyncSession,
+    telegram_id: int,
+    selected_date: date
+):
+    stmt = (
+        select(
+            Tasks.created_at,
+            Tasks.scales_and_fruis,
+            Tasks.fruit_picking,
+            Tasks.linear_equasion,
+            Tasks.area_and_perimeter,
+            Tasks.total,
+            Tasks.mistakes,
+        ).filter(Tasks.user_id == telegram_id)
+    )
+    result = await session.execute(stmt)
+    task_records = result.fetchall()
     return task_records

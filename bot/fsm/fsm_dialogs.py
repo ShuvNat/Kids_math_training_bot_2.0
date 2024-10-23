@@ -27,6 +27,9 @@ class TaskState(StatesGroup):
 
 class StatsState(StatesGroup):
     student = State()
+    format = State()
+    xlsx = State()
+    what_next = State()
     period = State()
     calendar = State()
     stats = State()
