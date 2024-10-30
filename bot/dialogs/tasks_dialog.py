@@ -66,12 +66,6 @@ async def answer_handler(
         await message.answer(text='Неправильно. Попробуйте еще раз.')
 
 
-async def is_admin_getter(
-        dialog_manager: DialogManager,
-        event_from_user: User,
-        **kwargs):
-    return {'user_id': event_from_user.id}
-
 task_dialog = Dialog(
     Window(
         Case(
@@ -109,7 +103,6 @@ task_dialog = Dialog(
             content_types=ContentType.TEXT,
         ),
         Back(Const('Сдаться'), id='back'),
-        getter=is_admin_getter,
         state=TaskState.answer,
     ),
 )
